@@ -88,6 +88,7 @@ namespace sak
             
             timer.Stop();
             timer.Dispose();
+            Console.Clear();
             printField();
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
             Console.WriteLine("You win");
