@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Timers;
 
@@ -97,9 +98,6 @@ namespace sak
 
         private void printField()
         {
-            
-            
-            
             Console.Clear();
             
             for (int i = 0; i < playingArea.Length; i++)
@@ -158,8 +156,7 @@ namespace sak
             Console.WriteLine("Scores: " + currentScore);
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
             Console.WriteLine("Time: " + time);
-            time += 0.033;
-            time = Math.Round(time, 2);
+            time = Math.Round((double)(time + 0.033), 2);
            
         }
 
@@ -191,9 +188,8 @@ namespace sak
             char key = ' ';
 
             key = Console.ReadKey()
-                  .KeyChar
+                  .Key
                   .ToString()
-                  .ToUpper()
                   .ToCharArray()[0];
 
             if (!buttons.Contains(key))
