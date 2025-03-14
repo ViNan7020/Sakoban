@@ -17,7 +17,10 @@ namespace sak
         private List<List<int>> finishCoordinates;
         private int currentScore = 0;
         private int boxCount = 0;
-        private double time;
+        private int secs, mins;
+        private int playerX, playerY;
+
+
         public GameSak(char[][] field)
         {
             _field = field;
@@ -29,8 +32,8 @@ namespace sak
         {
             Console.WriteLine("Press any button to start...");
             Console.ReadKey();
-            
-            
+
+
 
             for (int i = 0; i < _field.Length; i++)
             {
@@ -69,38 +72,72 @@ namespace sak
 
             timer = new System.Timers.Timer();
             timer.Elapsed += (s, e) => {
-                printField();
-                
+                printTime(true);
             };
-            timer.Interval = 33;
+            timer.Interval = 1000;
             timer.Start();
+
+            for (int i = 0; i < playingArea.Length; i++)
+            {
+                int x = Array.IndexOf(playingArea[i], 'H');
+                if (x != -1)
+                {
+                    playerX = x;
+                    playerY = i;
+                    break;
+                }
+            }
 
             while (true)
             {
-                
-                if (!walking())
+                printField();
+                if (!checkKeyClickInGame())
                 {
                     continue;
                 }
                 if (checkBoxesOnFinish() >= scoreForWin)
                     break;
             }
-            
-            timer.Stop();
-            timer.Dispose();
+
             Console.Clear();
             printField();
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
-            Console.WriteLine("You win");
+            timer.Stop();
+            timer.Dispose();
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
+            Console.WriteLine("You win. Press to continue");
             Console.ReadKey();
         }
 
-       
+        private void printTime(bool needPlus)
+        {
+            if(needPlus)
+            { 
+                secs += 1;
+                if (secs >= 60)
+                {
+                    secs -= 60;
+                    mins++;
+                }
+            } 
+            string secsStr = string.Empty, minsStr = string.Empty;
+            if(secs < 10)
+            {
+                secsStr = "0" + secs;
+            }
+            if (mins < 10)
+            {
+                minsStr = "0" + mins;
+            }
+
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 10, playingArea.Length + 2);
+            Console.Write(minsStr + ":" + secsStr + "  ");
+            
+        }
 
         private void printField()
         {
             Console.Clear();
-            
+
             for (int i = 0; i < playingArea.Length; i++)
             {
                 Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[i].Length, Console.CursorTop);
@@ -125,7 +162,7 @@ namespace sak
                         }
                         if (boxOnFinish)
                         {
-                            
+
                             Console.ForegroundColor = ConsoleColor.Green;
                             Console.Write(playingArea[i][j] + " ");
                             Console.ForegroundColor = ConsoleColor.White;
@@ -151,19 +188,19 @@ namespace sak
                 }
                 Console.WriteLine();
             }
+            
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
             Console.WriteLine("Steps: " + steps + "\tTries: " + tries);
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 6, Console.CursorTop);
             Console.WriteLine("Scores: " + currentScore);
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
-            Console.WriteLine("Time: " + time);
-            time = Math.Round((double)(time + 0.033), 2);
-           
+            Console.Write("Time: ");
+            printTime(false);
         }
 
         private int checkBoxesOnFinish()
         {
-            int boxesOnFinish = 0; 
+            int boxesOnFinish = 0;
             for (int i = 0; i < playingArea.Length; i++)
             {
                 for (int j = 0; j < playingArea[i].Length; j++)
@@ -176,14 +213,14 @@ namespace sak
                                 boxesOnFinish++;
                                 break;
                             }
-                        } 
+                        }
                     }
                 }
             }
             return boxesOnFinish;
         }
 
-        private bool walking()
+        private bool checkKeyClickInGame()
         {
 
             char key = ' ';
@@ -219,125 +256,114 @@ namespace sak
 
         private bool checkWalking(char button)
         {
-            int row = 0, str = 0;
-            for (int i = 0; i < playingArea.Length; i++)
-            {
-                int search = Array.IndexOf(playingArea[i], 'H');
-                if (search != -1)
-                {
-                    row = search;
-                    str = i;
-                    break;
-                }
-            }
+            
 
 
             if (button == 'W')
             {
-                if (str < 1) return false;
-                if (playingArea[str - 1][row] == '#')
+                if (playerY < 1) return false;
+                if (playingArea[playerY - 1][playerX] == '#')
                 {
                     return false;
                 }
-                else if (playingArea[str - 1][row] == 'B')
+                else if (playingArea[playerY - 1][playerX] == 'B')
                 {
-                    if (str < 2 || playingArea[str - 2][row] == 'B' ||
-                        playingArea[str - 2][row] == '#')
+                    if (playerY < 2 || playingArea[playerY - 2][playerX] == 'B' ||
+                        playingArea[playerY - 2][playerX] == '#')
                     {
                         return false;
                     }
-                    playingArea[str][row] = ' ';
-                    playingArea[str - 1][row] = 'H';
-                    playingArea[str - 2][row] = 'B';
-                }
-                else if (str != 0 && playingArea[str - 1][row] == 'X')
-                {
-                    playingArea[str][row] = 'X';
-                    playingArea[str - 1][row] = 'H';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY - 1][playerX] = 'H';
+                    playingArea[playerY - 2][playerX] = 'B';
                 }
                 else
                 {
-                    playingArea[str][row] = ' ';
-                    playingArea[str - 1][row] = 'H';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY - 1][playerX] = 'H';
                 }
+                playerY--;
             }
-            if (button == 'A')
+            else if (button == 'A')
             {
-                if (row < 1) return false;
-                if (playingArea[str][row - 1] == '#')
+                if (playerX < 1) return false;
+                if (playingArea[playerY][playerX - 1] == '#')
                 {
                     return false;
                 }
-                else if (playingArea[str][row - 1] == 'B')
+                else if (playingArea[playerY][playerX - 1] == 'B')
                 {
-                    if (row < 2 || playingArea[str][row - 2] == 'B' ||
-                        playingArea[str][row - 2] == '#')
+                    if (playerX < 2 || playingArea[playerY][playerX - 2] == 'B' ||
+                        playingArea[playerY][playerX - 2] == '#')
                     {
                         return false;
                     }
-                    playingArea[str][row] = ' ';
-                    playingArea[str][row - 1] = 'H';
-                    playingArea[str][row - 2] = 'B';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY][playerX - 1] = 'H';
+                    playingArea[playerY][playerX - 2] = 'B';
                 }
 
                 else
                 {
-                    playingArea[str][row] = ' ';
-                    playingArea[str][row - 1] = 'H';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY][playerX - 1] = 'H';
                 }
+                playerX--;
             }
-            if (button == 'S')
+            else if (button == 'S')
             {
-                if (str >= playingArea.Length - 1)
+                if (playerY >= playingArea.Length - 1)
                     return false;
-                if (playingArea[str + 1][row] == '#')
+                if (playingArea[playerY + 1][playerX] == '#')
                 {
                     return false;
                 }
-                else if (playingArea[str + 1][row] == 'B')
+                else if (playingArea[playerY + 1][playerX] == 'B')
                 {
-                    if (str >= playingArea.Length - 2 || playingArea[str + 2][row] == 'B' ||
-                        playingArea[str + 2][row] == '#'
+                    if (playerY >= playingArea.Length - 2 || playingArea[playerY + 2][playerX] == 'B' ||
+                        playingArea[playerY + 2][playerX] == '#'
                         )
                     {
                         return false;
                     }
-                    playingArea[str][row] = ' ';
-                    playingArea[str + 1][row] = 'H';
-                    playingArea[str + 2][row] = 'B';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY + 1][playerX] = 'H';
+                    playingArea[playerY + 2][playerX] = 'B';
                 }
 
                 else
                 {
-                    playingArea[str][row] = ' ';
-                    playingArea[str + 1][row] = 'H';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY + 1][playerX] = 'H';
                 }
+                playerY++;
             }
-            if (button == 'D')
+            else if (button == 'D')
             {
-                if (row >= playingArea.Length - 1)
+                if (playerX >= playingArea.Length - 1)
                     return false;
-                if (playingArea[str][row + 1] == '#')
+                if (playingArea[playerY][playerX + 1] == '#')
                 {
                     return false;
                 }
-                else if (playingArea[str][row + 1] == 'B')
+                else if (playingArea[playerY][playerX + 1] == 'B')
                 {
-                    if (row >= playingArea.Length - 2 || playingArea[str][row + 2] == 'B' ||
-                        playingArea[str][row + 2] == '#')
+                    if (playerX >= playingArea.Length - 2 || playingArea[playerY][playerX + 2] == 'B' ||
+                        playingArea[playerY][playerX + 2] == '#')
                     {
                         return false;
                     }
-                    playingArea[str][row] = ' ';
-                    playingArea[str][row + 1] = 'H';
-                    playingArea[str][row + 2] = 'B';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY][playerX + 1] = 'H';
+                    playingArea[playerY][playerX + 2] = 'B';
                 }
 
                 else
                 {
-                    playingArea[str][row] = ' ';
-                    playingArea[str][row + 1] = 'H';
+                    playingArea[playerY][playerX] = ' ';
+                    playingArea[playerY][playerX + 1] = 'H';
                 }
+                playerX++;
             }
             for (int i = 0; i < finishCoordinates.Count; i++)
             {
