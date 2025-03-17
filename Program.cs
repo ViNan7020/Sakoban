@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Timers;
 
 namespace sak
 {
-
+    public delegate void CallBack();
     class GameSak
     {
         private System.Timers.Timer timer;
@@ -19,7 +21,11 @@ namespace sak
         private int boxCount = 0;
         private int secs, mins;
         private int playerX, playerY;
-
+        private bool isTimerShow = true, isTimerWork = true;
+        private bool isStepsShow = true, isStepsWork = true;
+        private bool isTriesShow = true, isTriesWork = true;
+        private bool isScoresShow = true, isScoresWork = true;
+        private bool isColorsShow = true;
 
         public GameSak(char[][] field)
         {
@@ -66,17 +72,22 @@ namespace sak
 
             if (scoreForWin > boxCount)
             {
+                Console.Clear();
                 Console.WriteLine("Level is impossible. The number of drawers is less than the space for drawers");
+                Console.ReadKey();
                 return;
             }
 
-            timer = new System.Timers.Timer();
-            timer.Elapsed += (s, e) => {
-                printTime(true);
-            };
-            timer.Interval = 1000;
-            timer.Start();
-
+            if (isTimerWork)
+            {
+                timer = new System.Timers.Timer();
+                timer.Elapsed += (s, e) =>
+                {
+                    printTime(true);
+                };
+                timer.Interval = 1000;
+                timer.Start();
+            }
             for (int i = 0; i < playingArea.Length; i++)
             {
                 int x = Array.IndexOf(playingArea[i], 'H');
@@ -88,9 +99,16 @@ namespace sak
                 }
             }
 
+            CallBack cb;
+            if (isColorsShow)
+                cb = new(printFieldWithColors);
+            else
+                cb = new(printField);
+
+
             while (true)
             {
-                printField();
+                cb();
                 if (!checkKeyClickInGame())
                 {
                     continue;
@@ -100,9 +118,13 @@ namespace sak
             }
 
             Console.Clear();
-            printField();
-            timer.Stop();
-            timer.Dispose();
+            cb();
+            if (isTimerWork)
+            {
+                timer.Stop();
+                timer.Dispose();
+                secs = mins = 0;
+            }
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
             Console.WriteLine("You win. Press to continue");
             Console.ReadKey();
@@ -115,15 +137,19 @@ namespace sak
                 secs += 1;
                 if (secs >= 60)
                 {
-                    secs -= 60;
-                    mins++;
+                    mins += (int)Math.Floor((double)secs/60);
+                    secs %= 60;
                 }
             } 
-            string secsStr = string.Empty, minsStr = string.Empty;
+
+            string secsStr = secs.ToString(),
+                    minsStr = mins.ToString();
+
             if(secs < 10)
             {
                 secsStr = "0" + secs;
             }
+            else
             if (mins < 10)
             {
                 minsStr = "0" + mins;
@@ -134,7 +160,7 @@ namespace sak
             
         }
 
-        private void printField()
+        private void printFieldWithColors()
         {
             Console.Clear();
 
@@ -188,14 +214,50 @@ namespace sak
                 }
                 Console.WriteLine();
             }
-            
+
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
-            Console.WriteLine("Steps: " + steps + "\tTries: " + tries);
+            if (isStepsShow)
+                Console.Write("Steps: " + steps);
+            if (isTriesShow)
+                Console.WriteLine("\tTries: " + tries);
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 6, Console.CursorTop);
-            Console.WriteLine("Scores: " + currentScore);
+            if (isScoresShow)
+                Console.WriteLine("Scores: " + currentScore);
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
-            Console.Write("Time: ");
-            printTime(false);
+            if (isTimerShow)
+            {
+                Console.Write("Time: ");
+                printTime(false);
+            }
+        }
+
+        private void printField()
+        {
+            Console.Clear();
+
+            for (int i = 0; i < playingArea.Length; i++)
+            {
+                Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[i].Length, Console.CursorTop);
+                for (int j = 0; j < playingArea[i].Length; j++)
+                {
+                     Console.Write(playingArea[i][j] + " ");
+                }
+                Console.WriteLine();
+            }
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
+            if (isStepsShow)
+                Console.Write("Steps: " + steps);
+            if(isTriesShow)
+                Console.WriteLine("\tTries: " + tries);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 6, Console.CursorTop);
+            if (isScoresShow) 
+                Console.WriteLine("Scores: " + currentScore);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
+            if (isTimerShow)
+            {
+                Console.Write("Time: ");
+                printTime(false);
+            }
         }
 
         private int checkBoxesOnFinish()
@@ -224,7 +286,7 @@ namespace sak
         {
 
             char key = ' ';
-
+            
             key = Console.ReadKey()
                   .Key
                   .ToString()
@@ -237,18 +299,31 @@ namespace sak
 
             if (key == 'R')
             {
-                tries++;
-                steps = 0;
+                if(isTriesWork)
+                    tries++;
+                if(isStepsWork)
+                    steps = 0;
                 for (int i = 0; i < _field.Length; i++)
                 {
                     playingArea[i] = new char[_field[i].Length];
                     _field[i].CopyTo(playingArea[i], 0);
                 }
+                for (int i = 0; i < playingArea.Length; i++)
+                {
+                    int x = Array.IndexOf(playingArea[i], 'H');
+                    if (x != -1)
+                    {
+                        playerX = x;
+                        playerY = i;
+                        break;
+                    }
+                }
                 return false;
             }
             if (checkWalking(key))
             {
-                steps++;
+                if(isStepsWork)
+                    steps++;
             }
 
             return true;
@@ -256,9 +331,6 @@ namespace sak
 
         private bool checkWalking(char button)
         {
-            
-
-
             if (button == 'W')
             {
                 if (playerY < 1) return false;
@@ -377,14 +449,14 @@ namespace sak
             return true;
         }
 
-        public void menu()
+        public void mainMenu()
         {
             string[] menuLetters =
             {
-                "1. Play",
-                "2. Rules of game",
-                "3. Settings",
-                "4. Exit"
+                "Play",
+                "Rules of game",
+                "Settings",
+                "Exit"
             };
             while (true)
             {
@@ -395,13 +467,17 @@ namespace sak
                 {
                     for (int i = 0; i < menuLetters.Length; i++)
                     {
-                        if (i == choice)
+                        if (i == choice && isColorsShow)
                         {
                             Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine(menuLetters[i]);
+                            Console.WriteLine((i + 1) + ". " + menuLetters[i]);
                             Console.ForegroundColor = ConsoleColor.White;
                         }
-                        else Console.WriteLine(menuLetters[i]);
+                        else if(i == choice)
+                        {
+                            Console.WriteLine((i + 1) + ". " + menuLetters[i] + " <-");
+                        }
+                        else Console.WriteLine((i + 1) + ". " + menuLetters[i]);
                     }
                     
                     key = Console.ReadKey();
@@ -417,7 +493,9 @@ namespace sak
                     
                     Console.Clear();
                 } while (key.Key != ConsoleKey.Enter);
+
                 Console.Clear();
+
                 switch (choice)
                 {
                     case 0:
@@ -427,9 +505,7 @@ namespace sak
                         support();
                         break;
                     case 2:
-                        Console.WriteLine("Out of order");
-                        Console.ReadKey();
-                        Console.Clear();
+                        settings();
                         break;
                     case 3:
                         Console.WriteLine("Thanks for playing");
@@ -441,7 +517,7 @@ namespace sak
                 }
             }
         }
-        public void support()
+        private void support()
         {
             string[] supportLetters =
             {
@@ -466,6 +542,181 @@ namespace sak
             Console.Clear();
         }
 
+        private void settings()
+        {
+            string[] settingsLetters = 
+            {
+                "Timer show: ",
+                "Timer work: ",
+                "Steps show: ",
+                "Steps work: ",
+                "Tries show: ",
+                "Tries work: ",
+                "Scores show: ",
+                "Scores work: ",
+                "Colors show: ",
+                "Exit"
+            };
+            string[] settingLetterDescriptions =
+            {
+               "Show Timer in Game",
+               "Disable Timer in game",
+               "Show Steps in Game",
+               "Disable Steps in game",
+               "Show Tries in Game",
+               "Disable Tries in game",
+               "Show Scores in Game",
+               "Disable Scores in game",
+               "Disable Colors in game and menu",
+               " ",
+            };
+
+            int choice = 0;
+            int maxLength = 0;
+            foreach(string letter in settingsLetters)
+            {
+                if(maxLength < letter.Length)
+                {
+                    maxLength = letter.Length;
+                }
+            }
+            ConsoleKeyInfo key;
+
+            while (true)
+            {
+                
+                string[] YesOrNoInSettingsLetters = new string[]
+                {
+                    YesOrNo(isTimerShow),
+                    YesOrNo(isTimerWork),
+                    YesOrNo(isStepsShow),
+                    YesOrNo(isStepsWork),
+                    YesOrNo(isTriesShow),
+                    YesOrNo(isTriesWork),
+                    YesOrNo(isScoresShow),
+                    YesOrNo(isScoresWork),
+                    YesOrNo(isColorsShow),
+                    ""
+                };
+                
+                key = new ConsoleKeyInfo();
+                Console.Clear();
+                do
+                {
+                    for (int i = 0; i < settingsLetters.Length; i++)
+                    {
+                        if (i == choice)
+                        {
+                            if (isColorsShow)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Cyan;
+                                Console.Write((i + 1) + ". " + settingsLetters[i]);
+                                if (YesOrNoInSettingsLetters[i] == "Yes")
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Yellow;
+                                }
+                                else
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Magenta;
+                                }
+                                Console.WriteLine(YesOrNoInSettingsLetters[i]);
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            else
+                            {
+                                Console.WriteLine((i + 1) + ". " + settingsLetters[i] + YesOrNoInSettingsLetters[i] + " <-");
+                            }
+                            Console.SetCursorPosition((Console.WindowWidth / 2 - settingsLetters[i].Length / 2) / 2, Console.CursorTop - 1);
+                            Console.WriteLine(settingLetterDescriptions[i]);
+                        }
+                        else if (isColorsShow)
+                        {
+                            Console.Write((i + 1) + ". " + settingsLetters[i]);
+                            if (YesOrNoInSettingsLetters[i] == "Yes")
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                            }
+                            Console.WriteLine(YesOrNoInSettingsLetters[i]);
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        else Console.WriteLine((i + 1) + ". " + settingsLetters[i] + YesOrNoInSettingsLetters[i]);
+                    }
+
+                    key = Console.ReadKey();
+                    if (choice > 0 && key.Key == ConsoleKey.W)
+                    {
+                        choice--;
+                    }
+                    else if (choice < settingsLetters.Length - 1
+                                && key.Key == ConsoleKey.S)
+                    {
+                        choice++;
+                    }
+
+                    Console.Clear();
+                } while (key.Key != ConsoleKey.Enter);
+
+                Console.Clear();
+
+                switch (choice)
+                {
+                    case 0:
+                        isTimerShow = !isTimerShow;
+                        if(!isTimerWork)
+                            isTimerWork = !isTimerWork;
+                        break;
+                    case 1:
+                        isTimerWork = !isTimerWork;
+                        if(isTimerShow)
+                            isTimerShow = !isTimerShow;
+                        break;
+                    case 2:
+                        isStepsShow = !isStepsShow;
+                        if (!isStepsWork)
+                            isStepsWork = !isStepsWork;
+                        break;
+                    case 3:
+                        isStepsWork = !isStepsWork;
+                        if(isStepsShow)
+                            isStepsShow = !isStepsShow;
+                        break;
+                    case 4:
+                        isTriesShow = !isTriesShow;
+                        if (!isTriesWork)
+                            isTriesWork = !isTriesWork;
+                        break;
+                    case 5:
+                        isTriesWork = !isTriesWork;
+                        if(isTriesShow)
+                            isTriesShow = !isTriesShow;
+                        break;
+                    case 6:
+                        isScoresShow = !isScoresShow;
+                        if (!isScoresWork)
+                            isScoresWork = !isScoresWork;
+                        break;
+                    case 7:
+                        isScoresWork = !isScoresWork;
+                        if (isScoresShow)
+                            isScoresShow = !isScoresShow;
+                        break;
+                    case 8:
+                        isColorsShow = !isColorsShow;
+                        break;
+                    case 9:
+                        return;
+                    default:
+                        break;
+                }
+            }
+
+        }
+
+        private string YesOrNo(bool del) => del ? "Yes" : "No";
     }
 
     internal class Program
@@ -488,7 +739,7 @@ namespace sak
                 new char[]{' ', '#','#','#',' ','#',' ',' ',' ',' ',' '},
             };
             GameSak game = new GameSak(field);
-            game.menu();
+            game.mainMenu();
         }
     }
 }
