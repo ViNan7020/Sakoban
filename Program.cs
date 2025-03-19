@@ -15,7 +15,7 @@ namespace sak
         public char[][] playingArea;
         private int steps = 0;
         private int tries = 1;
-        private char[] buttons = { 'W', 'A', 'S', 'D', 'R' };
+        private Dictionary<string, ConsoleKey> _buttons;
         private List<List<int>> finishCoordinates;
         private int currentScore = 0;
         private int boxCount = 0;
@@ -32,6 +32,15 @@ namespace sak
             _field = field;
             playingArea = new char[field.Length][];
             finishCoordinates = new List<List<int>>();
+            _buttons = new Dictionary<string, ConsoleKey>()
+            {
+                {"Up", ConsoleKey.W },
+                {"Down", ConsoleKey.S },
+                {"Left", ConsoleKey.A },
+                {"Right", ConsoleKey.D },
+                {"Restart", ConsoleKey.R },
+                {"Interact", ConsoleKey.Enter },
+            };
         }
 
         public void start()
@@ -125,6 +134,8 @@ namespace sak
                 timer.Dispose();
                 secs = mins = 0;
             }
+            tries = 1;
+            steps = 0;
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
             Console.WriteLine("You win. Press to continue");
             Console.ReadKey();
@@ -279,25 +290,24 @@ namespace sak
                     }
                 }
             }
+            currentScore = boxesOnFinish;
             return boxesOnFinish;
         }
 
         private bool checkKeyClickInGame()
         {
 
-            char key = ' ';
-            
-            key = Console.ReadKey()
-                  .Key
-                  .ToString()
-                  .ToCharArray()[0];
+            ConsoleKey key = new ConsoleKey();
 
-            if (!buttons.Contains(key))
+            key = Console.ReadKey().Key;
+
+
+            if (!_buttons.ContainsValue(key))
             {
                 return false;
             }
 
-            if (key == 'R')
+            if (_buttons["Restart"] == key)
             {
                 if(isTriesWork)
                     tries++;
@@ -329,114 +339,75 @@ namespace sak
             return true;
         }
 
-        private bool checkWalking(char button)
+        private bool walking(int x, int y, int XNext, int YNext)
         {
-            if (button == 'W')
-            {
-                if (playerY < 1) return false;
-                if (playingArea[playerY - 1][playerX] == '#')
-                {
-                    return false;
-                }
-                else if (playingArea[playerY - 1][playerX] == 'B')
-                {
-                    if (playerY < 2 || playingArea[playerY - 2][playerX] == 'B' ||
-                        playingArea[playerY - 2][playerX] == '#')
-                    {
-                        return false;
-                    }
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY - 1][playerX] = 'H';
-                    playingArea[playerY - 2][playerX] = 'B';
-                }
-                else
-                {
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY - 1][playerX] = 'H';
-                }
-                playerY--;
-            }
-            else if (button == 'A')
-            {
-                if (playerX < 1) return false;
-                if (playingArea[playerY][playerX - 1] == '#')
-                {
-                    return false;
-                }
-                else if (playingArea[playerY][playerX - 1] == 'B')
-                {
-                    if (playerX < 2 || playingArea[playerY][playerX - 2] == 'B' ||
-                        playingArea[playerY][playerX - 2] == '#')
-                    {
-                        return false;
-                    }
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY][playerX - 1] = 'H';
-                    playingArea[playerY][playerX - 2] = 'B';
-                }
 
-                else
-                {
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY][playerX - 1] = 'H';
-                }
-                playerX--;
-            }
-            else if (button == 'S')
+            try
             {
-                if (playerY >= playingArea.Length - 1)
-                    return false;
-                if (playingArea[playerY + 1][playerX] == '#')
+                if (playingArea[y][x] == '#')
                 {
                     return false;
                 }
-                else if (playingArea[playerY + 1][playerX] == 'B')
+                else if (playingArea[y][x] == 'B')
                 {
-                    if (playerY >= playingArea.Length - 2 || playingArea[playerY + 2][playerX] == 'B' ||
-                        playingArea[playerY + 2][playerX] == '#'
-                        )
+                    if (playingArea[YNext][XNext] == 'B' ||
+                        playingArea[YNext][XNext] == '#')
                     {
                         return false;
                     }
                     playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY + 1][playerX] = 'H';
-                    playingArea[playerY + 2][playerX] = 'B';
+                    playingArea[y][x] = 'H';
+                    playingArea[YNext][XNext] = 'B';
                 }
-
                 else
                 {
                     playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY + 1][playerX] = 'H';
+                    playingArea[y][x] = 'H';
                 }
-                playerY++;
             }
-            else if (button == 'D')
+            catch
             {
-                if (playerX >= playingArea.Length - 1)
-                    return false;
-                if (playingArea[playerY][playerX + 1] == '#')
-                {
-                    return false;
-                }
-                else if (playingArea[playerY][playerX + 1] == 'B')
-                {
-                    if (playerX >= playingArea.Length - 2 || playingArea[playerY][playerX + 2] == 'B' ||
-                        playingArea[playerY][playerX + 2] == '#')
-                    {
-                        return false;
-                    }
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY][playerX + 1] = 'H';
-                    playingArea[playerY][playerX + 2] = 'B';
-                }
-
-                else
-                {
-                    playingArea[playerY][playerX] = ' ';
-                    playingArea[playerY][playerX + 1] = 'H';
-                }
-                playerX++;
+                return false;
             }
+
+            playerX = x;
+            playerY = y;
+
+            return true;
+        }
+
+        private bool checkWalking(ConsoleKey button)
+        {
+            if (button == _buttons["Up"])
+            {
+                if (!walking(playerX, playerY - 1, playerX, playerY - 2))
+                {
+                    return false;
+                }
+            }
+            if (button == _buttons["Down"])
+            {
+                if (!walking(playerX, playerY + 1, playerX, playerY + 2))
+                {
+                    return false;
+                }
+            }
+            if (button == _buttons["Left"])
+            {
+                if (!walking(playerX - 1, playerY, playerX - 2, playerY))
+                {
+                    return false;
+                }
+            }
+            if (button == _buttons["Right"])
+            {
+                if (!walking(playerX + 1, playerY, playerX + 2, playerY))
+                {
+                    return false;
+                }
+            }
+
+
             for (int i = 0; i < finishCoordinates.Count; i++)
             {
                 if (playingArea[finishCoordinates[i][0]]
@@ -461,7 +432,7 @@ namespace sak
             while (true)
             {
                 int choice = 0;
-                ConsoleKeyInfo key = new ConsoleKeyInfo();
+                ConsoleKey key = new ConsoleKey();
                 Console.Clear();
                 do
                 {
@@ -480,19 +451,19 @@ namespace sak
                         else Console.WriteLine((i + 1) + ". " + menuLetters[i]);
                     }
                     
-                    key = Console.ReadKey();
-                    if (choice > 0 && key.Key == ConsoleKey.W)
+                    key = Console.ReadKey().Key;
+                    if (choice > 0 && key == _buttons["Up"])
                     {
                         choice--;
                     }
                     else if (choice < menuLetters.Length - 1
-                                && key.Key == ConsoleKey.S)
+                                && key == _buttons["Down"])
                     {
                         choice++;
                     }
                     
                     Console.Clear();
-                } while (key.Key != ConsoleKey.Enter);
+                } while (key != _buttons["Interact"]);
 
                 Console.Clear();
 
@@ -525,11 +496,12 @@ namespace sak
                 "You cannot push more than one box at a time.",
                 "You can walk in four directions: up, down, left, right.",
                 "Control and navigation buttons: ",
-                "W - Up",
-                "S - Down",
-                "A - Left",
-                "D - Right",
-                "R - Restart a level"
+                _buttons["Up"] + " - Up",
+                _buttons["Down"] + " - Down",
+                _buttons["Left"] + " - Left",
+                _buttons["Right"] + " - Right",
+                _buttons["Restart"] + " - Restart a level",
+                _buttons["Interact"] + " - Button interaction in menus"
             };
             
             foreach (string letter in supportLetters)
@@ -555,6 +527,7 @@ namespace sak
                 "Scores show: ",
                 "Scores work: ",
                 "Colors show: ",
+                "Key Bindings ",
                 "Exit"
             };
             string[] settingLetterDescriptions =
@@ -568,6 +541,7 @@ namespace sak
                "Show Scores in Game",
                "Disable Scores in game",
                "Disable Colors in game and menu",
+               "You can change keys bindings",
                " ",
             };
 
@@ -580,8 +554,7 @@ namespace sak
                     maxLength = letter.Length;
                 }
             }
-            ConsoleKeyInfo key;
-
+            ConsoleKey key = new ConsoleKey();
             while (true)
             {
                 
@@ -596,10 +569,11 @@ namespace sak
                     YesOrNo(isScoresShow),
                     YesOrNo(isScoresWork),
                     YesOrNo(isColorsShow),
-                    ""
+                    "",
+                    "",
                 };
                 
-                key = new ConsoleKeyInfo();
+                
                 Console.Clear();
                 do
                 {
@@ -646,19 +620,19 @@ namespace sak
                         else Console.WriteLine((i + 1) + ". " + settingsLetters[i] + YesOrNoInSettingsLetters[i]);
                     }
 
-                    key = Console.ReadKey();
-                    if (choice > 0 && key.Key == ConsoleKey.W)
+                    key = Console.ReadKey().Key;
+                    if (choice > 0 && key == _buttons["Up"])
                     {
                         choice--;
                     }
                     else if (choice < settingsLetters.Length - 1
-                                && key.Key == ConsoleKey.S)
+                                && key == _buttons["Down"])
                     {
                         choice++;
                     }
 
                     Console.Clear();
-                } while (key.Key != ConsoleKey.Enter);
+                } while (key != _buttons["Interact"]);
 
                 Console.Clear();
 
@@ -708,14 +682,106 @@ namespace sak
                         isColorsShow = !isColorsShow;
                         break;
                     case 9:
+                        changeKeyBindings();
+                        break;
+                    case 10:
                         return;
                     default:
                         break;
                 }
             }
 
+
         }
 
+        private void changeKeyBindings()
+        {
+            int choice = 0;
+            string[] keyBindings = new string[_buttons.Count + 1];
+            ConsoleKey key = new ConsoleKey();
+
+            while (true) {
+
+                choice = 0;
+                foreach (var button in _buttons)
+                {
+                    keyBindings[choice++] = button.Key + ": " + button.Value;
+                }
+
+                keyBindings[choice++] = "Exit";
+                choice = 0;
+                do
+                {
+                    for (int i = 0; i < keyBindings.Length; i++)
+                    {
+                        if (i == choice)
+                        {
+                            if (isColorsShow)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Cyan;
+                                Console.WriteLine(keyBindings[i]);
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            else
+                                Console.WriteLine(keyBindings[i] + " <-");
+                        }
+                        else
+                        {
+                            Console.WriteLine(keyBindings[i]);
+                        }
+                    }
+                    
+
+                   
+
+                    key = Console.ReadKey().Key;
+                    if (choice > 0 && key == _buttons["Up"])
+                    {
+                        choice--;
+                    }
+                    else if (choice < keyBindings.Length - 1
+                                && key == _buttons["Down"])
+                    {
+                        choice++;
+                    }
+
+                    Console.Clear();
+                } while (key != _buttons["Interact"]);
+
+                if(choice == keyBindings.Length - 1)
+                {
+                    return;
+                }
+
+                string keySubString = keyBindings[choice].Substring(0, keyBindings[choice].IndexOf(":"));
+                keyBindings[choice] = keySubString + ": ....";
+
+                Console.ForegroundColor= ConsoleColor.Gray;
+                for (int i = 0; i < keyBindings.Length; i++)
+                {
+                    if (i == choice)
+                    {
+                        if (isColorsShow)
+                        {
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine(keyBindings[i]);
+                            Console.ForegroundColor = ConsoleColor.Gray;
+                        }
+                        else
+                            Console.WriteLine(keyBindings[i] + " <-");
+                    }
+                    else
+                    {
+                        Console.WriteLine(keyBindings[i]);
+                    }
+                }
+
+                Console.WriteLine("Press to bind a button");
+                _buttons[keySubString] = Console.ReadKey().Key;
+                Console.Clear();
+            }
+
+        }
         private string YesOrNo(bool del) => del ? "Yes" : "No";
     }
 
