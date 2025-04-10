@@ -52,7 +52,7 @@ namespace sak
             };
 
             IncomingTime = string.Join(string.Empty,IncomingTime.Split(' ', '.', ':'));
-            dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\logs";
+            dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\records";
             
         } 
 
@@ -70,7 +70,7 @@ namespace sak
                 Console.ReadKey();
                 return;
             }
-            FileStream file = File.Create(dirPath + "\\log" + IncomingTime + ".txt");
+            FileStream file = File.Create(dirPath + "\\record" + IncomingTime + ".txt");
             Console.WriteLine("Press any button to start...");
             Console.ReadKey();
 
@@ -519,7 +519,7 @@ namespace sak
             {
                 "Play",
                 "Rules of game",
-                "Logs",
+                "Records",
                 "Settings",
                 "Exit"
             };
@@ -571,7 +571,7 @@ namespace sak
                         support();
                         break;
                     case 2:
-                        logs();
+                        records();
                         break;
                     case 3:
                         settings();
@@ -612,14 +612,14 @@ namespace sak
             Console.Clear();
         }
 
-        private void logs()
+        private void records()
         {
             string[] files = Directory.GetFiles(dirPath);
-            string[] lettersLogs = new string[files.Length + 1];
+            string[] lettersrecords = new string[files.Length + 1];
 
             if(files.Length == 0)
             {
-                Console.WriteLine("Logs not found");
+                Console.WriteLine("Records not found");
                 Console.ReadKey();
                 return;
             }
@@ -627,10 +627,10 @@ namespace sak
             {
                 string name = files[i].Split("\\").Last();
                 files[i] = name.Substring(0, name.IndexOf(".txt"));
-                lettersLogs[i] = files[i].Substring(3);
+                lettersrecords[i] = files[i].Substring(6);
             }
 
-            lettersLogs[lettersLogs.Length - 1] = "Exit";
+            lettersrecords[lettersrecords.Length - 1] = "Exit";
 
             while (true) {
                 int choice = 0;
@@ -638,19 +638,19 @@ namespace sak
                 do
                 {
                     Console.Clear() ;
-                    for (int i = 0; i < lettersLogs.Length; i++)
+                    for (int i = 0; i < lettersrecords.Length; i++)
                     {
                         if (i == choice && isColorsShow)
                         {
                             Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine((i + 1) + ". " + lettersLogs[i]);
+                            Console.WriteLine((i + 1) + ". " + lettersrecords[i]);
                             Console.ForegroundColor = ConsoleColor.White;
                         }
                         else if (i == choice)
                         {
-                            Console.WriteLine((i + 1) + ". " + lettersLogs[i] + " <-");
+                            Console.WriteLine((i + 1) + ". " + lettersrecords[i] + " <-");
                         }
-                        else Console.WriteLine((i + 1) + ". " + lettersLogs[i]);
+                        else Console.WriteLine((i + 1) + ". " + lettersrecords[i]);
                     }
                     key = Console.ReadKey().Key;
                     if (key == _buttons["Up"])
@@ -660,13 +660,13 @@ namespace sak
                     }
                     else if (key == _buttons["Down"])
                     {
-                        if (choice < lettersLogs.Length - 1) choice++;
+                        if (choice < lettersrecords.Length - 1) choice++;
                         else choice = 0;
                     }
                     Console.Clear();
                 } while (key != _buttons["Interact"]);
                 
-                if(choice == lettersLogs.Length - 1)return;
+                if(choice == lettersrecords.Length - 1)return;
 
                 using (StreamReader reader = new StreamReader(dirPath + "\\" + files[choice] + ".txt"))
                 {
@@ -712,14 +712,14 @@ namespace sak
                             Console.Clear();
                         } while (key != _buttons["Interact"]);
                         if (choice != lettersForGames.Count - 1)
-                            logPrint(gamesInOneIncoming[choice].Split("_"));
+                            recordPrint(gamesInOneIncoming[choice].Split("_"));
                     }
                 }
                 
             }
         }
 
-        private void logPrint(string[] game)
+        private void recordPrint(string[] game)
         {
             Console.WriteLine(game[0]);
             for (int i = 1; i < game.Length; i++) {
