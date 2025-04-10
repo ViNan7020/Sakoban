@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Timers;
@@ -31,6 +32,7 @@ namespace sak
             isColorsShow = true;
         private string dirPath = Directory.GetCurrentDirectory();
         private string IncomingTime = DateTime.Now.ToString();
+        private FileStream file;
         public GameSak()
         {
             levelsChecker = new LevelsChecker(); 
@@ -39,7 +41,6 @@ namespace sak
             {
                 levels.Add(key.Key, key.Value);
             }
-            finishCoordinates = new List<List<int>>();
             
             _buttons = new Dictionary<string, ConsoleKey>()
             {
@@ -50,7 +51,7 @@ namespace sak
                 {"Restart", ConsoleKey.R },
                 {"Interact", ConsoleKey.Enter },
             };
-
+            finishCoordinates = new List<List<int>>();
             IncomingTime = string.Join(string.Empty,IncomingTime.Split(' ', '.', ':'));
             dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\records";
             
@@ -70,12 +71,15 @@ namespace sak
                 Console.ReadKey();
                 return;
             }
-            FileStream file = File.Create(dirPath + "\\record" + IncomingTime + ".txt");
+            
             Console.WriteLine("Press any button to start...");
             Console.ReadKey();
 
-
-
+            if (!File.Exists(dirPath + "\\record" + IncomingTime + ".txt")) {
+                file = File.Create(dirPath + "\\record" + IncomingTime + ".txt");
+                file.Dispose();
+            }
+            finishCoordinates.Clear();
             playingArea = new char[currentLevel.Length][];
             for (int i = 0; i < currentLevel.Length; i++)
             {
@@ -150,12 +154,10 @@ namespace sak
             Console.Clear();
 
             printField(playingArea);
-            
 
-
-            using (StreamWriter writer = new StreamWriter(file))
+            using (StreamWriter writer = new(file.Name, true))
             {
-                writer.Write("Game" + gamesCount + "_Time: " + DateTime.Now + "_Level: " + levelTitle + "_Steps: " + steps +
+                writer.WriteAsync("Game" + gamesCount + "_Time: " + DateTime.Now + "_Level: " + levelTitle + "_Steps: " + steps +
                     "_Timer: " + mins + ":" + secs + "_Tries: " + tries + " |");
                 writer.Flush();
             }
@@ -614,43 +616,45 @@ namespace sak
 
         private void records()
         {
-            string[] files = Directory.GetFiles(dirPath);
-            string[] lettersrecords = new string[files.Length + 1];
-
-            if(files.Length == 0)
-            {
-                Console.WriteLine("Records not found");
-                Console.ReadKey();
-                return;
-            }
-            for (int i = 0; i < Directory.GetFiles(dirPath).Length; i++)
-            {
-                string name = files[i].Split("\\").Last();
-                files[i] = name.Substring(0, name.IndexOf(".txt"));
-                lettersrecords[i] = files[i].Substring(6);
-            }
-
-            lettersrecords[lettersrecords.Length - 1] = "Exit";
+            
 
             while (true) {
+                string[] files = Directory.GetFiles(dirPath);
+                string[] lettersRecords = new string[files.Length + 1];
+
+                if (files.Length == 0)
+                {
+                    Console.WriteLine("Records not found");
+                    Console.ReadKey();
+                    return;
+                }
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string name = files[i].Split("\\").Last();
+                    files[i] = name.Substring(0, name.IndexOf(".txt"));
+                    lettersRecords[i] = files[i].Substring(6);
+                }
+
+                lettersRecords[lettersRecords.Length - 1] = "Exit";
+
                 int choice = 0;
                 ConsoleKey key;
                 do
                 {
                     Console.Clear() ;
-                    for (int i = 0; i < lettersrecords.Length; i++)
+                    for (int i = 0; i < lettersRecords.Length; i++)
                     {
                         if (i == choice && isColorsShow)
                         {
                             Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine((i + 1) + ". " + lettersrecords[i]);
+                            Console.WriteLine((i + 1) + ". " + lettersRecords[i]);
                             Console.ForegroundColor = ConsoleColor.White;
                         }
                         else if (i == choice)
                         {
-                            Console.WriteLine((i + 1) + ". " + lettersrecords[i] + " <-");
+                            Console.WriteLine((i + 1) + ". " + lettersRecords[i] + " <-");
                         }
-                        else Console.WriteLine((i + 1) + ". " + lettersrecords[i]);
+                        else Console.WriteLine((i + 1) + ". " + lettersRecords[i]);
                     }
                     key = Console.ReadKey().Key;
                     if (key == _buttons["Up"])
@@ -660,13 +664,13 @@ namespace sak
                     }
                     else if (key == _buttons["Down"])
                     {
-                        if (choice < lettersrecords.Length - 1) choice++;
+                        if (choice < lettersRecords.Length - 1) choice++;
                         else choice = 0;
                     }
                     Console.Clear();
                 } while (key != _buttons["Interact"]);
                 
-                if(choice == lettersrecords.Length - 1)return;
+                if(choice == lettersRecords.Length - 1)return;
 
                 using (StreamReader reader = new StreamReader(dirPath + "\\" + files[choice] + ".txt"))
                 {
@@ -713,6 +717,11 @@ namespace sak
                         } while (key != _buttons["Interact"]);
                         if (choice != lettersForGames.Count - 1)
                             recordPrint(gamesInOneIncoming[choice].Split("_"));
+                    }
+                    else
+                    {
+                        reader.Close();
+                        File.Delete(dirPath + "\\" + files[choice] + ".txt");
                     }
                 }
                 
