@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Linq;
@@ -7,31 +8,39 @@ using System.Timers;
 
 namespace sak
 {
-    public delegate void CallBack();
+
+    public delegate void CallBack(char[][] area);
     class GameSak
     {
-        private System.Timers.Timer timer;
-        private char[][] _field;
+        private LevelsChecker levelsChecker;
+        private System.Timers.Timer? timer;
+        private Dictionary<string, char[][]> levels;
+        private char[][] currentLevel;
         public char[][] playingArea;
-        private int steps = 0;
-        private int tries = 1;
         private Dictionary<string, ConsoleKey> _buttons;
         private List<List<int>> finishCoordinates;
-        private int currentScore = 0;
-        private int boxCount = 0;
-        private int secs, mins;
-        private int playerX, playerY;
-        private bool isTimerShow = true, isTimerWork = true;
-        private bool isStepsShow = true, isStepsWork = true;
-        private bool isTriesShow = true, isTriesWork = true;
-        private bool isScoresShow = true, isScoresWork = true;
-        private bool isColorsShow = true;
-
-        public GameSak(char[][] field)
+        private int currentScore = 0,
+            steps = 0, tries = 1,
+            boxCount = 0, gamesCount = 0,
+            secs, mins,
+            playerX, playerY;
+        private bool isTimerShow = true, isTimerWork = true,
+            isStepsShow = true, isStepsWork = true,
+            isTriesShow = true, isTriesWork = true,
+            isScoresShow = true, isScoresWork = true,
+            isColorsShow = true;
+        private string dirPath = Directory.GetCurrentDirectory();
+        private string IncomingTime = DateTime.Now.ToString();
+        public GameSak()
         {
-            _field = field;
-            playingArea = new char[field.Length][];
+            levelsChecker = new LevelsChecker(); 
+            levels = new Dictionary<string, char[][]>();
+            foreach (var key in levelsChecker.LevelsAdd())
+            {
+                levels.Add(key.Key, key.Value);
+            }
             finishCoordinates = new List<List<int>>();
+            
             _buttons = new Dictionary<string, ConsoleKey>()
             {
                 {"Up", ConsoleKey.W },
@@ -41,19 +50,37 @@ namespace sak
                 {"Restart", ConsoleKey.R },
                 {"Interact", ConsoleKey.Enter },
             };
-        }
+
+            IncomingTime = string.Join(string.Empty,IncomingTime.Split(' ', '.', ':'));
+            dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\logs";
+            
+        } 
 
         public void start()
         {
+            string levelTitle;
+            try
+            {
+                levelTitle = SelectMenuLevel();
+                currentLevel = levels[levelTitle];
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.ReadKey();
+                return;
+            }
+            FileStream file = File.Create(dirPath + "\\log" + IncomingTime + ".txt");
             Console.WriteLine("Press any button to start...");
             Console.ReadKey();
 
 
 
-            for (int i = 0; i < _field.Length; i++)
+            playingArea = new char[currentLevel.Length][];
+            for (int i = 0; i < currentLevel.Length; i++)
             {
-                playingArea[i] = new char[_field[i].Length];
-                _field[i].CopyTo(playingArea[i], 0);
+                playingArea[i] = new char[currentLevel[i].Length];
+                currentLevel[i].CopyTo(playingArea[i], 0);
             }
             for (int i = 0; i < playingArea.Length; i++)
             {
@@ -77,6 +104,7 @@ namespace sak
 
             }
 
+            gamesCount++;
             int scoreForWin = finishCoordinates.Count;
 
             if (scoreForWin > boxCount)
@@ -108,16 +136,9 @@ namespace sak
                 }
             }
 
-            CallBack cb;
-            if (isColorsShow)
-                cb = new(printFieldWithColors);
-            else
-                cb = new(printField);
-
-
             while (true)
             {
-                cb();
+                printField(playingArea);
                 if (!checkKeyClickInGame())
                 {
                     continue;
@@ -127,20 +148,90 @@ namespace sak
             }
 
             Console.Clear();
-            cb();
+
+            printField(playingArea);
+            
+
+
+            using (StreamWriter writer = new StreamWriter(file))
+            {
+                writer.Write("Game" + gamesCount + "_Time: " + DateTime.Now + "_Level: " + levelTitle + "_Steps: " + steps +
+                    "_Timer: " + mins + ":" + secs + "_Tries: " + tries + " |");
+                writer.Flush();
+            }
+
             if (isTimerWork)
             {
                 timer.Stop();
                 timer.Dispose();
                 secs = mins = 0;
             }
+
             tries = 1;
             steps = 0;
+
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
             Console.WriteLine("You win. Press to continue");
             Console.ReadKey();
         }
 
+        private string SelectMenuLevel()
+        {
+            if (levels.Count == 0)
+            {
+                throw new Exception("Levels not found");
+            }
+            else if (levels.Count == 1)
+            {
+                return levels.Keys.First();
+            }
+
+            ConsoleKey key;
+            int choice = 0;
+            string[] levelsNames = levels.Keys.ToArray();
+            CallBack cb;
+
+            if (isColorsShow)
+                cb = new(printFieldWithColors);
+            else
+                cb = new(printFieldWithoutColors);
+
+            
+            do
+            {
+                Console.Clear();
+
+                Console.SetCursorPosition(Console.WindowWidth / 2 - 8, Console.CursorTop);
+                Console.WriteLine("Select a level");
+
+                Console.SetCursorPosition(Console.WindowWidth / 2 - (levelsNames[choice].Length + 10) / 2, Console.CursorTop);
+                Console.WriteLine(_buttons["Left"] + " < " + levelsNames[choice] +  " > " + _buttons["Right"]);
+                Console.WriteLine();
+                Console.SetCursorPosition(Console.WindowWidth / 2 - levelsNames[choice].Length / 2, Console.CursorTop);
+                cb(levels[levelsNames[choice]]);
+
+                key = Console.ReadKey().Key;
+                if (key == _buttons["Left"])
+                {
+                    if (choice > 0) choice--;
+                    else choice = levelsNames.Length - 1;
+                }
+                else if (key == _buttons["Right"])
+                {
+                    if (choice < levelsNames.Length - 1) choice++;
+                    else choice = 0;
+                }
+
+                Console.Clear();
+            } while (key != _buttons["Interact"]);
+
+            Console.Clear();
+
+
+
+
+            return levelsNames[choice];
+        }
         private void printTime(bool needPlus)
         {
             if(needPlus)
@@ -171,60 +262,16 @@ namespace sak
             
         }
 
-        private void printFieldWithColors()
+        private void printField(char[][] area)
         {
             Console.Clear();
+            CallBack cb;
+            if (isColorsShow)
+                cb = new(printFieldWithColors);
+            else
+                cb = new(printFieldWithoutColors);
 
-            for (int i = 0; i < playingArea.Length; i++)
-            {
-                Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[i].Length, Console.CursorTop);
-                for (int j = 0; j < playingArea[i].Length; j++)
-                {
-                    if (playingArea[i][j] == 'H')
-                    {
-                        Console.ForegroundColor = ConsoleColor.Blue;
-                        Console.Write(playingArea[i][j] + " ");
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-                    else if (playingArea[i][j] == 'B')
-                    {
-                        bool boxOnFinish = false;
-                        for (int k = 0; k < finishCoordinates.Count; k++)
-                        {
-                            if (i == finishCoordinates[k][0] && j == finishCoordinates[k][1])
-                            {
-                                boxOnFinish = true;
-                                break;
-                            }
-                        }
-                        if (boxOnFinish)
-                        {
-
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.Write(playingArea[i][j] + " ");
-                            Console.ForegroundColor = ConsoleColor.White;
-
-                        }
-                        else
-                        {
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write(playingArea[i][j] + " ");
-                            Console.ForegroundColor = ConsoleColor.White;
-                        }
-
-                    }
-                    else if (playingArea[i][j] == 'X')
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.Write(playingArea[i][j] + " ");
-                        Console.ForegroundColor = ConsoleColor.White;
-                    }
-
-
-                    else Console.Write(playingArea[i][j] + " ");
-                }
-                Console.WriteLine();
-            }
+            cb(area);
 
             Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
             if (isStepsShow)
@@ -242,33 +289,79 @@ namespace sak
             }
         }
 
-        private void printField()
+        private void printFieldWithColors(char[][] area)
         {
-            Console.Clear();
+            
 
-            for (int i = 0; i < playingArea.Length; i++)
+            for (int i = 0; i < area.Length; i++)
             {
-                Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[i].Length, Console.CursorTop);
-                for (int j = 0; j < playingArea[i].Length; j++)
+                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, Console.CursorTop);
+                for (int j = 0; j < area[i].Length; j++)
                 {
-                     Console.Write(playingArea[i][j] + " ");
+                    if (area[i][j] == 'H')
+                    {
+                        Console.ForegroundColor = ConsoleColor.Blue;
+                        Console.Write(area[i][j] + " ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else if (area[i][j] == 'B')
+                    {
+                        bool boxOnFinish = false;
+                        for (int k = 0; k < finishCoordinates.Count; k++)
+                        {
+                            if (i == finishCoordinates[k][0] && j == finishCoordinates[k][1])
+                            {
+                                boxOnFinish = true;
+                                break;
+                            }
+                        }
+                        if (boxOnFinish)
+                        {
+
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.Write(area[i][j] + " ");
+                            Console.ForegroundColor = ConsoleColor.White;
+
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.Write(area[i][j] + " ");
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+
+                    }
+                    else if (area[i][j] == 'X')
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Write(area[i][j] + " ");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+
+
+                    else Console.Write(area[i][j] + " ");
+                }
+                Console.WriteLine();
+
+            }
+
+            
+        }
+
+        private void printFieldWithoutColors(char[][] area)
+        {
+            
+
+            for (int i = 0; i < area.Length; i++)
+            {
+                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, Console.CursorTop);
+                for (int j = 0; j < area[i].Length; j++)
+                {
+                     Console.Write(area[i][j] + " ");
                 }
                 Console.WriteLine();
             }
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
-            if (isStepsShow)
-                Console.Write("Steps: " + steps);
-            if(isTriesShow)
-                Console.WriteLine("\tTries: " + tries);
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 6, Console.CursorTop);
-            if (isScoresShow) 
-                Console.WriteLine("Scores: " + currentScore);
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
-            if (isTimerShow)
-            {
-                Console.Write("Time: ");
-                printTime(false);
-            }
+            
         }
 
         private int checkBoxesOnFinish()
@@ -313,10 +406,10 @@ namespace sak
                     tries++;
                 if(isStepsWork)
                     steps = 0;
-                for (int i = 0; i < _field.Length; i++)
+                for (int i = 0; i < currentLevel.Length; i++)
                 {
-                    playingArea[i] = new char[_field[i].Length];
-                    _field[i].CopyTo(playingArea[i], 0);
+                    playingArea[i] = new char[currentLevel[i].Length];
+                    currentLevel[i].CopyTo(playingArea[i], 0);
                 }
                 for (int i = 0; i < playingArea.Length; i++)
                 {
@@ -426,6 +519,7 @@ namespace sak
             {
                 "Play",
                 "Rules of game",
+                "Logs",
                 "Settings",
                 "Exit"
             };
@@ -452,16 +546,17 @@ namespace sak
                     }
                     
                     key = Console.ReadKey().Key;
-                    if (choice > 0 && key == _buttons["Up"])
+                    if (key == _buttons["Up"])
                     {
-                        choice--;
+                        if (choice > 0) choice--;
+                        else choice = menuLetters.Length - 1;
                     }
-                    else if (choice < menuLetters.Length - 1
-                                && key == _buttons["Down"])
+                    else if (key == _buttons["Down"])
                     {
-                        choice++;
+                        if (choice < menuLetters.Length - 1) choice++;
+                        else choice = 0;
                     }
-                    
+
                     Console.Clear();
                 } while (key != _buttons["Interact"]);
 
@@ -476,9 +571,12 @@ namespace sak
                         support();
                         break;
                     case 2:
-                        settings();
+                        logs();
                         break;
                     case 3:
+                        settings();
+                        break;
+                    case 4:
                         Console.WriteLine("Thanks for playing");
                         Console.ReadKey();
                         Environment.Exit(0);
@@ -512,6 +610,123 @@ namespace sak
             
             Console.ReadKey();
             Console.Clear();
+        }
+
+        private void logs()
+        {
+            string[] files = Directory.GetFiles(dirPath);
+            string[] lettersLogs = new string[files.Length + 1];
+
+            if(files.Length == 0)
+            {
+                Console.WriteLine("Logs not found");
+                Console.ReadKey();
+                return;
+            }
+            for (int i = 0; i < Directory.GetFiles(dirPath).Length; i++)
+            {
+                string name = files[i].Split("\\").Last();
+                files[i] = name.Substring(0, name.IndexOf(".txt"));
+                lettersLogs[i] = files[i].Substring(3);
+            }
+
+            lettersLogs[lettersLogs.Length - 1] = "Exit";
+
+            while (true) {
+                int choice = 0;
+                ConsoleKey key;
+                do
+                {
+                    Console.Clear() ;
+                    for (int i = 0; i < lettersLogs.Length; i++)
+                    {
+                        if (i == choice && isColorsShow)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Cyan;
+                            Console.WriteLine((i + 1) + ". " + lettersLogs[i]);
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        else if (i == choice)
+                        {
+                            Console.WriteLine((i + 1) + ". " + lettersLogs[i] + " <-");
+                        }
+                        else Console.WriteLine((i + 1) + ". " + lettersLogs[i]);
+                    }
+                    key = Console.ReadKey().Key;
+                    if (key == _buttons["Up"])
+                    {
+                        if (choice > 0) choice--;
+                        else choice = files.Length - 1;
+                    }
+                    else if (key == _buttons["Down"])
+                    {
+                        if (choice < lettersLogs.Length - 1) choice++;
+                        else choice = 0;
+                    }
+                    Console.Clear();
+                } while (key != _buttons["Interact"]);
+                
+                if(choice == lettersLogs.Length - 1)return;
+
+                using (StreamReader reader = new StreamReader(dirPath + "\\" + files[choice] + ".txt"))
+                {
+                    choice = 0;
+                    string[] gamesInOneIncoming = reader.ReadToEnd().Split('|');
+                    List<string> lettersForGames = new List<string>();
+                    foreach (string game in gamesInOneIncoming)
+                    {
+                        if(game == "")continue;
+                        lettersForGames.Add(game);
+                    }
+                    if (lettersForGames.Count != 0)
+                    {
+                        lettersForGames.Add("Exit");
+                        do
+                        {
+                            for (int i = 0; i < lettersForGames.Count; i++)
+                            {
+
+                                if (i == choice && isColorsShow)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Cyan;
+                                    Console.WriteLine((i + 1) + ". " + lettersForGames[i].Split("_").First());
+                                    Console.ForegroundColor = ConsoleColor.White;
+                                }
+                                else if (i == choice)
+                                {
+                                    Console.WriteLine((i + 1) + ". " + lettersForGames[i].Split("_").First() + " <-");
+                                }
+                                else Console.WriteLine((i + 1) + ". " + lettersForGames[i].Split("_").First());
+                            }
+                            key = Console.ReadKey().Key;
+                            if (key == _buttons["Up"])
+                            {
+                                if (choice > 0) choice--;
+                                else choice = files.Length - 1;
+                            }
+                            else if (key == _buttons["Down"])
+                            {
+                                if (choice < lettersForGames.Count - 1) choice++;
+                                else choice = 0;
+                            }
+                            Console.Clear();
+                        } while (key != _buttons["Interact"]);
+                        if (choice != lettersForGames.Count - 1)
+                            logPrint(gamesInOneIncoming[choice].Split("_"));
+                    }
+                }
+                
+            }
+        }
+
+        private void logPrint(string[] game)
+        {
+            Console.WriteLine(game[0]);
+            for (int i = 1; i < game.Length; i++) {
+                Console.WriteLine("   " + game[i]);
+            
+            }
+            Console.ReadKey();
         }
 
         private void settings()
@@ -621,14 +836,15 @@ namespace sak
                     }
 
                     key = Console.ReadKey().Key;
-                    if (choice > 0 && key == _buttons["Up"])
+                    if ( key == _buttons["Up"])
                     {
-                        choice--;
+                        if(choice > 0) choice--;
+                        else choice = settingsLetters.Length - 1;
                     }
-                    else if (choice < settingsLetters.Length - 1
-                                && key == _buttons["Down"])
+                    else if (key == _buttons["Down"])
                     {
-                        choice++;
+                        if (choice < settingsLetters.Length - 1) choice++;
+                        else choice = 0;
                     }
 
                     Console.Clear();
@@ -735,14 +951,15 @@ namespace sak
                    
 
                     key = Console.ReadKey().Key;
-                    if (choice > 0 && key == _buttons["Up"])
+                    if (key == _buttons["Up"])
                     {
-                        choice--;
+                        if (choice > 0) choice--;
+                        else choice = keyBindings.Length - 1;
                     }
-                    else if (choice < keyBindings.Length - 1
-                                && key == _buttons["Down"])
+                    else if (key == _buttons["Down"])
                     {
-                        choice++;
+                        if (choice < keyBindings.Length - 1) choice++;
+                        else choice = 0;
                     }
 
                     Console.Clear();
@@ -785,12 +1002,9 @@ namespace sak
         private string YesOrNo(bool del) => del ? "Yes" : "No";
     }
 
-    internal class Program
+    class LevelsChecker
     {
-
-        static void Main(string[] args)
-        {
-            char[][] field =
+        private char[][] defaultFirstLevel =
             {
                 new char[]{' ', '#',' ','#','#','#',' ',' ',' ',' ',' '},
                 new char[]{' ', '#',' ',' ',' ','#',' ',' ',' ',' ',' '},
@@ -804,7 +1018,64 @@ namespace sak
                 new char[]{' ', '#',' ',' ',' ','#',' ','#','#','#','#'},
                 new char[]{' ', '#','#','#',' ','#',' ',' ',' ',' ',' '},
             };
-            GameSak game = new GameSak(field);
+
+        private char[][] defaultSecondLevel =
+        {
+                new char[]{' ', '#',' ','#','#','#',' ',' ',' ',' ',' '},
+                new char[]{' ', '#',' ',' ',' ','#',' ',' ',' ',' ',' '},
+                new char[]{' ', '#',' ','B',' ','#',' ',' ',' ',' ',' '},
+                new char[]{' ', '#',' ',' ',' ','#',' ',' ',' ',' ',' '},
+                new char[]{'#', '#',' ','#',' ','#','#','#','#','#','#'},
+                new char[]{' ', ' ',' ',' ',' ',' ','#',' ','X',' ',' '},
+                new char[]{'#', ' ','B',' ','B',' ',' ','H','X',' ','#'},
+                new char[]{'#', ' ',' ',' ',' ',' ',' ',' ','X',' ','#'},
+                new char[]{'#', '#',' ','#','B','#','#',' ','X',' ','#'},
+                new char[]{' ', '#',' ',' ',' ','#',' ','#','#','#','#'},
+                new char[]{' ', '#','#','#',' ','#',' ',' ',' ',' ',' '},
+            };
+
+        public LevelsChecker()
+        {
+
+        }
+
+        public Dictionary<string, char[][]> LevelsAdd()
+        {
+            string dirPath = Directory.GetCurrentDirectory();
+            dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\levels";
+            if (Directory.Exists(dirPath) && Directory.GetFiles(dirPath).Length > 0)
+            {
+                Dictionary<string, char[][]> levels = new Dictionary<string, char[][]>();
+                foreach (string levelName in Directory.GetFiles(dirPath))
+                { 
+                    using(StreamReader reader = new StreamReader(levelName))
+                    {
+                        string[] fullLevel = reader.ReadToEnd().Split("\r\n");
+                        char[][] level = new char[fullLevel.Length][];
+                        for (int i = 0; i < level.Length; i++)
+                        {
+                            level[i] = fullLevel[i].ToCharArray();
+                        }
+                        string name = levelName.Split("\\").Last();
+                        levels.Add(name.Substring(0, name.IndexOf(".txt")), level);
+                    }
+                }
+                return levels;
+            }
+            Dictionary<string, char[][]> defaultLevels = new Dictionary<string, char[][]>();
+            defaultLevels.Add(nameof(defaultFirstLevel), defaultFirstLevel);
+            defaultLevels.Add(nameof(defaultSecondLevel), defaultSecondLevel);
+            return defaultLevels;
+        }
+    }
+
+    internal class Program
+    {
+
+        static void Main(string[] args)
+        {
+            
+            GameSak game = new GameSak();
             game.mainMenu();
         }
     }
