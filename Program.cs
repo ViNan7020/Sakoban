@@ -5,6 +5,7 @@ using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Timers;
 
 namespace sak
@@ -52,7 +53,7 @@ namespace sak
                 {"Interact", ConsoleKey.Enter },
             };
             finishCoordinates = new List<List<int>>();
-            IncomingTime = string.Join(string.Empty,IncomingTime.Split(' ', '.', ':'));
+            IncomingTime = IncomingTime.Replace('.', '-').Replace(':', '_');
             dirPath = dirPath.Substring(0, dirPath.IndexOf("\\bin")) + "\\records";
             
         } 
@@ -75,8 +76,8 @@ namespace sak
             Console.WriteLine("Press any button to start...");
             Console.ReadKey();
 
-            if (!File.Exists(dirPath + "\\record" + IncomingTime + ".txt")) {
-                file = File.Create(dirPath + "\\record" + IncomingTime + ".txt");
+            if (!File.Exists(dirPath + "\\" + IncomingTime + ".txt")) {
+                file = File.Create(dirPath + "\\" + IncomingTime + ".txt");
                 file.Dispose();
             }
             finishCoordinates.Clear();
@@ -157,8 +158,10 @@ namespace sak
 
             using (StreamWriter writer = new(file.Name, true))
             {
-                writer.WriteAsync("Game" + gamesCount + "_Time: " + DateTime.Now + "_Level: " + levelTitle + "_Steps: " + steps +
-                    "_Timer: " + mins + ":" + secs + "_Tries: " + tries + " |");
+                writer.WriteAsync("Game" + gamesCount + "_Time: " + DateTime.Now + "_Level: " + levelTitle + 
+                    "_Steps: " + (isStepsWork ? steps : "disabled") +
+                    "_Timer: " + (isTimerWork ? mins + ":" + secs : "disabled" ) + 
+                    "_Tries: " + (isTriesWork ? tries : "disabled") + " |");
                 writer.Flush();
             }
 
@@ -172,7 +175,7 @@ namespace sak
             tries = 1;
             steps = 0;
 
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 7);
             Console.WriteLine("You win. Press to continue");
             Console.ReadKey();
         }
@@ -259,8 +262,8 @@ namespace sak
                 minsStr = "0" + mins;
             }
 
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 10, playingArea.Length + 2);
-            Console.Write(minsStr + ":" + secsStr + "  ");
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 19, playingArea.Length + 5);
+            Console.Write(minsStr + ":" + secsStr + "");
             
         }
 
@@ -275,15 +278,16 @@ namespace sak
 
             cb(area);
 
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, Console.CursorTop);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 4);
             if (isStepsShow)
                 Console.Write("Steps: " + steps);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 10, playingArea.Length + 4);
             if (isTriesShow)
                 Console.WriteLine("\tTries: " + tries);
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 6, Console.CursorTop);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length, playingArea.Length + 5);
             if (isScoresShow)
                 Console.WriteLine("Scores: " + currentScore);
-            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 4, Console.CursorTop);
+            Console.SetCursorPosition(Console.WindowWidth / 2 - playingArea[0].Length + 13, playingArea.Length + 5);
             if (isTimerShow)
             {
                 Console.Write("Time: ");
@@ -297,7 +301,7 @@ namespace sak
 
             for (int i = 0; i < area.Length; i++)
             {
-                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, Console.CursorTop);
+                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, i + 3);
                 for (int j = 0; j < area[i].Length; j++)
                 {
                     if (area[i][j] == 'H')
@@ -356,7 +360,7 @@ namespace sak
 
             for (int i = 0; i < area.Length; i++)
             {
-                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, Console.CursorTop);
+                Console.SetCursorPosition(Console.WindowWidth / 2 - area[i].Length, i + 3);
                 for (int j = 0; j < area[i].Length; j++)
                 {
                      Console.Write(area[i][j] + " ");
@@ -515,6 +519,47 @@ namespace sak
             return true;
         }
 
+        private int printMenu(string[] menuLetters){
+            int choice = 0;
+            ConsoleKey key = new ConsoleKey();
+            Console.Clear();
+            do
+            {
+                for (int i = 0; i < menuLetters.Length; i++)
+                {
+                    if (i == choice && isColorsShow)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine((i + 1) + ". " + menuLetters[i]);
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    else if (i == choice)
+                    {
+                        Console.WriteLine((i + 1) + ". " + menuLetters[i] + " <-");
+                    }
+                    else Console.WriteLine((i + 1) + ". " + menuLetters[i]);
+                }
+
+                key = Console.ReadKey().Key;
+                if (key == _buttons["Up"])
+                {
+                    if (choice > 0) choice--;
+                    else choice = menuLetters.Length - 1;
+                }
+                else if (key == _buttons["Down"])
+                {
+                    if (choice < menuLetters.Length - 1) choice++;
+                    else choice = 0;
+                }
+
+                Console.Clear();
+            } while (key != _buttons["Interact"]);
+
+            Console.Clear();
+            return choice;
+        }
+
+
         public void mainMenu()
         {
             string[] menuLetters =
@@ -527,42 +572,8 @@ namespace sak
             };
             while (true)
             {
-                int choice = 0;
-                ConsoleKey key = new ConsoleKey();
-                Console.Clear();
-                do
-                {
-                    for (int i = 0; i < menuLetters.Length; i++)
-                    {
-                        if (i == choice && isColorsShow)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine((i + 1) + ". " + menuLetters[i]);
-                            Console.ForegroundColor = ConsoleColor.White;
-                        }
-                        else if(i == choice)
-                        {
-                            Console.WriteLine((i + 1) + ". " + menuLetters[i] + " <-");
-                        }
-                        else Console.WriteLine((i + 1) + ". " + menuLetters[i]);
-                    }
-                    
-                    key = Console.ReadKey().Key;
-                    if (key == _buttons["Up"])
-                    {
-                        if (choice > 0) choice--;
-                        else choice = menuLetters.Length - 1;
-                    }
-                    else if (key == _buttons["Down"])
-                    {
-                        if (choice < menuLetters.Length - 1) choice++;
-                        else choice = 0;
-                    }
-
-                    Console.Clear();
-                } while (key != _buttons["Interact"]);
-
-                Console.Clear();
+                int choice = printMenu(menuLetters);
+                
 
                 switch (choice)
                 {
@@ -621,7 +632,7 @@ namespace sak
             while (true) {
                 string[] files = Directory.GetFiles(dirPath);
                 string[] lettersRecords = new string[files.Length + 1];
-
+                
                 if (files.Length == 0)
                 {
                     Console.WriteLine("Records not found");
@@ -632,49 +643,20 @@ namespace sak
                 {
                     string name = files[i].Split("\\").Last();
                     files[i] = name.Substring(0, name.IndexOf(".txt"));
-                    lettersRecords[i] = files[i].Substring(6);
+                    lettersRecords[i] = files[i].Replace('-', '.').Replace('_', ':');
                 }
 
                 lettersRecords[lettersRecords.Length - 1] = "Exit";
 
-                int choice = 0;
-                ConsoleKey key;
-                do
-                {
-                    Console.Clear() ;
-                    for (int i = 0; i < lettersRecords.Length; i++)
-                    {
-                        if (i == choice && isColorsShow)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine((i + 1) + ". " + lettersRecords[i]);
-                            Console.ForegroundColor = ConsoleColor.White;
-                        }
-                        else if (i == choice)
-                        {
-                            Console.WriteLine((i + 1) + ". " + lettersRecords[i] + " <-");
-                        }
-                        else Console.WriteLine((i + 1) + ". " + lettersRecords[i]);
-                    }
-                    key = Console.ReadKey().Key;
-                    if (key == _buttons["Up"])
-                    {
-                        if (choice > 0) choice--;
-                        else choice = files.Length - 1;
-                    }
-                    else if (key == _buttons["Down"])
-                    {
-                        if (choice < lettersRecords.Length - 1) choice++;
-                        else choice = 0;
-                    }
-                    Console.Clear();
-                } while (key != _buttons["Interact"]);
+                int choice = printMenu(lettersRecords);
+                
                 
                 if(choice == lettersRecords.Length - 1)return;
 
                 using (StreamReader reader = new StreamReader(dirPath + "\\" + files[choice] + ".txt"))
                 {
                     choice = 0;
+                    ConsoleKey key;
                     string[] gamesInOneIncoming = reader.ReadToEnd().Split('|');
                     List<string> lettersForGames = new List<string>();
                     foreach (string game in gamesInOneIncoming)
